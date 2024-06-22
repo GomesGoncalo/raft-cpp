@@ -1,0 +1,6 @@
+libs =
+import libs += libasio%lib{asio}
+
+exe{raft}: {hxx ixx txx cxx}{**} $libs testscript
+
+cxx.poptions =+ "-I$out_root" "-I$src_root"
