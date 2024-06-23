@@ -7,3 +7,4 @@ import libs += yaml-cpp%lib{yaml-cpp}
 lib{raft}: {hxx ixx txx cxx}{**} $libs
 
 cxx.poptions =+ "-I$out_root" "-I$src_root"
+cxx.coptions=-O3

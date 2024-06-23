@@ -1,37 +1,57 @@
 #include "raft_options.hxx"
 #include <boost/program_options.hpp>
+#include <chrono>
 #include <filesystem>
 #include <fmt/format.h>
 #include <fmt/ranges.h>
-#include <fstream>
 #include <iostream>
-#include <iterator>
 #include <spdlog/spdlog.h>
-#include <thread>
+#include <type_traits>
 #include <yaml-cpp/yaml.h>
 
 // This must NOT be inside namespaces
 template <> struct fmt::formatter<raft_options> : fmt::formatter<string_view> {
   auto format(const raft_options &opt, format_context &ctx) const {
     std::string temp;
-    fmt::format_to(std::back_inserter(temp),
-                   "raft_options: {{ threads: {}, timeout: {}, address: {}, "
-                   "neighbours: {} }}",
-                   opt.threads, opt.timeout, opt.address, opt.neighbours);
+    fmt::format_to(
+        std::back_inserter(temp),
+        "raft_options: {{ threads: {}, timeout: {}ms, address: {}, "
+        "neighbours: {} }}",
+        opt.threads,
+        std::chrono::duration_cast<std::chrono::milliseconds>(opt.timeout)
+            .count(),
+        opt.address, opt.neighbours);
     return fmt::formatter<string_view>::format(temp, ctx);
   }
 };
 
 namespace {
+template <typename Key, typename T>
+[[nodiscard]] inline
+    typename std::enable_if<!std::is_same_v<T, std::chrono::milliseconds>,
+                            T>::type
+    get(const auto &node, const Key &key) {
+  return node[key].template as<T>();
+}
+
+template <typename Key, typename T>
+[[nodiscard]] inline
+    typename std::enable_if<std::is_same_v<T, std::chrono::milliseconds>,
+                            T>::type
+    get(const auto &node, const Key &key) {
+  uint32_t ms = get<Key, uint32_t>(node, key);
+  return std::chrono::milliseconds(ms);
+}
+
 template <bool Optional, typename Key, typename T>
 void get_yaml(const auto &node, T &option, const Key &key) {
   if constexpr (Optional) {
     try {
-      option = node[key].template as<T>();
+      option = std::forward<T>(get<Key, T>(node, key));
     } catch (const std::exception &ex) {
     }
   } else {
-    option = node[key].template as<T>();
+    option = std::forward<T>(get<Key, T>(node, key));
   }
 }
 template <bool Optional, typename Key, typename T, typename... Other>

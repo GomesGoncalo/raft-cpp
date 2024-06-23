@@ -7,3 +7,4 @@ include ../raftlib/
 exe{raft}: {hxx ixx txx cxx}{**} $libs ../raftlib/lib{raft}
 
 cxx.poptions =+ "-I$out_root" "-I$src_root"
+cxx.coptions=-O3

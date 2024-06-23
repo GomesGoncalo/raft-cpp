@@ -11,7 +11,7 @@ TEST_CASE(
   try {
     auto opt = raft_options::create(data.size(), data.data());
     REQUIRE(false);
-  } catch (std::exception const &ex) {
+  } catch (const std::exception &ex) {
     REQUIRE(true);
   }
 }

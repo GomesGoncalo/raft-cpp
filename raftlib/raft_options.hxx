@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <optional>
 #include <vector>
 
@@ -16,7 +17,7 @@ struct raft_options final {
    *
    * [1]: https://en.cppreference.com/w/cpp/thread/thread/hardware_concurrency
    */
-  uint32_t threads = 0;
+  uint32_t threads{0};
 
   /**
    * The time (in milliseconds) after last hearing a Leader node when a new
@@ -26,7 +27,7 @@ struct raft_options final {
    *
    * key: timeout
    */
-  uint32_t timeout = 0;
+  std::chrono::milliseconds timeout = std::chrono::milliseconds{0};
 
   /**
    * The address for this node to bind to.
