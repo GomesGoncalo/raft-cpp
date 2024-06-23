@@ -29,3 +29,4 @@
 *.exe.dlls/
 *.exe.manifest
 *.pc
+*.yaml

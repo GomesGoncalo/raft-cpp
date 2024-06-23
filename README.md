@@ -1,9 +1,6 @@
 # raft - An executable
 
-The `raft` executable is a <SUMMARY-OF-FUNCTIONALITY>.
-
-Note that the `raft` executable in this package provides `build2` metadata.
-
+The `raft` executable is a node that implements the raft protocol.
 
 ## Usage
 
@@ -20,18 +17,6 @@ Then import the executable in your `buildfile`:
 ```
 import! [metadata] <TARGET> = raft%exe{<TARGET>}
 ```
-
-
-## Importable targets
-
-This package provides the following importable targets:
-
-```
-exe{<TARGET>}
-```
-
-<DESCRIPTION-OF-IMPORTABLE-TARGETS>
-
 
 ## Configuration variables
 

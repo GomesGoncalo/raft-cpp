@@ -2,8 +2,8 @@ libs =
 import libs += libasio%lib{asio}
 import libs += libboost-program-options%lib{boost_program_options}
 import libs += spdlog%lib{spdlog}
+import libs += yaml-cpp%lib{yaml-cpp}
 
-include ../raftlib/
-exe{raft}: {hxx ixx txx cxx}{**} $libs ../raftlib/lib{raft}
+lib{raft}: {hxx ixx txx cxx}{**} $libs
 
 cxx.poptions =+ "-I$out_root" "-I$src_root"
