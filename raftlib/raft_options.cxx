@@ -95,6 +95,7 @@ std::optional<raft_options> raft_options::create(int argc, const char *argv[]) {
   get_yaml<true>(file_config, opt.logging.pattern, "logging", "pattern");
   get_yaml<false>(file_config, opt.parameters.timeout, "parameters", "timeout");
   get_yaml<false>(file_config, opt.parameters.address, "parameters", "address");
+  get_yaml<false>(file_config, opt.parameters.port, "parameters", "port");
   get_yaml<false>(file_config, opt.parameters.neighbours, "parameters",
                   "neighbours");
   return opt;

@@ -1,10 +1,12 @@
 #pragma once
 
 #include "raft_options.hxx"
+#include <asio/ip/tcp.hpp>
 #include <boost/uuid/uuid.hpp>
 
 template <typename execution_context>
-struct raft final : std::enable_shared_from_this<raft<execution_context>> {
+struct raft final
+    : public std::enable_shared_from_this<raft<execution_context>> {
   template <typename... Args>
   static std::weak_ptr<raft<execution_context>> create(execution_context &,
                                                        Args &&...);
@@ -12,8 +14,13 @@ struct raft final : std::enable_shared_from_this<raft<execution_context>> {
   void stop();
 
 private:
+  auto shared_from_this() {
+    return std::enable_shared_from_this<
+        raft<execution_context>>::shared_from_this();
+  }
+
   raft(execution_context &, const raft_options::parameters_type &);
-  void init();
+  void start_accept();
 
   struct log_entry {};
 
@@ -29,8 +36,9 @@ private:
     std::vector<log_entry> log;
   };
 
-  raft_options::parameters_type opt;
+  raft_options::parameters_type parameters;
   execution_context &exec_ctx;
+  asio::ip::tcp::acceptor acceptor;
 };
 
 #include "detail/raft.hxx"

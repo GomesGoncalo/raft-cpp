@@ -63,7 +63,8 @@ struct raft_options final {
      *
      * key: logging.pattern
      */
-    std::string pattern{"[%D %H:%M:%S.%f %z] [%^%l%$] [thread %t] %v"};
+    std::string pattern{
+        "[%D %H:%M:%S.%f %z] [%^%l%$] [thread %t] [%s:%!:%#] %v"};
   } logging{};
 
   struct parameters_type {
@@ -79,13 +80,21 @@ struct raft_options final {
 
     /**
      * The address for this node to bind to.
-     * It should be formatted as: ip:port
      *
      * This value is not optional and must be added in the YAML config file
      *
      * key: address
      */
-    std::string address{};
+    std::string address{"127.0.0.1"};
+
+    /**
+     * The port for this node to bind to.
+     *
+     * This value is not optional and must be added in the YAML config file
+     *
+     * key: port
+     */
+    std::string port{};
 
     /**
      * The addresses where other nodes are reacheable.
