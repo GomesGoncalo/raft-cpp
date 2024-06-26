@@ -1,5 +1,7 @@
 libs =
 import libs += doctest%lib{doctest}
+import libs += spdlog%lib{spdlog}
+import libs += libasio%lib{asio}
 
 include ../raftlib/
 exe{tests}: {hxx ixx txx cxx}{**} $libs ../raftlib/lib{raft}

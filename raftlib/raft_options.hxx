@@ -1,9 +1,14 @@
 #pragma once
 
+#include <asio/ip/tcp.hpp>
 #include <chrono>
 #include <filesystem>
 #include <optional>
+#include <spdlog/spdlog.h>
+#include <unordered_set>
 #include <vector>
+
+using namespace std::chrono_literals;
 
 struct raft_options final {
   /**
@@ -53,7 +58,7 @@ struct raft_options final {
      *
      * key: logging.level
      */
-    uint16_t level{2};
+    spdlog::level::level_enum level{spdlog::level::info};
 
     /**
      * The spdlog log pattern.
@@ -76,7 +81,7 @@ struct raft_options final {
      *
      * key: timeout
      */
-    std::chrono::milliseconds timeout = std::chrono::milliseconds{0};
+    std::chrono::milliseconds timeout{0ms};
 
     /**
      * The address for this node to bind to.
@@ -85,16 +90,7 @@ struct raft_options final {
      *
      * key: address
      */
-    std::string address{"127.0.0.1"};
-
-    /**
-     * The port for this node to bind to.
-     *
-     * This value is not optional and must be added in the YAML config file
-     *
-     * key: port
-     */
-    std::string port{};
+    asio::ip::tcp::endpoint bind{};
 
     /**
      * The addresses where other nodes are reacheable.
@@ -104,7 +100,18 @@ struct raft_options final {
      *
      * key: neighbours
      */
-    std::vector<std::string> neighbours{};
+    std::unordered_set<asio::ip::tcp::endpoint> neighbours{};
+
+    struct connection_type {
+      /**
+       * The time before retrying connecting to a neighbour in milliseconds
+       *
+       * This value is not optional and must be added in the YAML config file
+       *
+       * key: retry
+       */
+      std::chrono::milliseconds retry{0ms};
+    } connection{};
   } parameters{};
 
   /**

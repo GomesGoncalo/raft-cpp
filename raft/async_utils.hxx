@@ -22,22 +22,18 @@ auto setup_signals(
     auto &io_ctx, std::weak_ptr<raft<T>> raft,
     std::optional<asio::executor_work_guard<asio::io_service::executor_type>>
         &&work) {
-  if (work) {
-    auto signals = std::make_unique<asio::signal_set>(io_ctx, SIGINT, SIGTERM);
-    signals->async_wait(
-        [raft, work = std::move(work)](const asio::error_code &ec,
-                                       int signal_number) mutable {
-          if (auto l = raft.lock()) {
-            SPDLOG_INFO("Signal received ({}), cleanup...", signal_number);
-            SPDLOG_TRACE("raft ownership acquired use_count {}", l.use_count());
-            l->stop();
-            work = std::nullopt;
-            SPDLOG_INFO("...done");
-          }
-        });
-    return signals;
-  } else {
-    return std::unique_ptr<asio::signal_set>();
-  }
+  auto signals = std::make_unique<asio::signal_set>(io_ctx, SIGINT, SIGTERM);
+  signals->async_wait(
+      [raft, work = std::move(work), &io_ctx](const asio::error_code &ec,
+                                              int signal_number) mutable {
+        if (auto l = raft.lock()) {
+          SPDLOG_INFO("Signal received ({}), cleanup...", signal_number);
+          SPDLOG_TRACE("raft ownership acquired use_count {}", l.use_count());
+          work = std::nullopt;
+          io_ctx.stop();
+          SPDLOG_INFO("...done");
+        }
+      });
+  return signals;
 }
 } // namespace async_utils

@@ -1,7 +1,8 @@
 #pragma once
 
+#include "detail/connection_interface.hxx"
 #include "raft_options.hxx"
-#include <asio/ip/tcp.hpp>
+#include "synchronized_value.hxx"
 #include <boost/uuid/uuid.hpp>
 #include <unordered_map>
 
@@ -13,12 +14,16 @@ private:
 
 public:
   template <typename... Args>
-  static std::weak_ptr<raft<execution_context>> create(execution_context &,
-                                                       Args &&...);
+  static std::weak_ptr<raft<execution_context>> create(Args &&...);
   ~raft();
   void stop();
 
   raft(secret_code, execution_context &, const raft_options::parameters_type &);
+
+  execution_context &get_executor() { return exec_ctx; }
+
+  void on_connected(std::shared_ptr<connection_interface<outgoing>>);
+  void on_disconnected(std::shared_ptr<connection_interface<outgoing>>);
 
 private:
   auto shared_from_this() {
@@ -28,7 +33,7 @@ private:
 
   void start_accept();
   void connect_neighbours();
-  void connect_neighbour(std::string ip, std::string port);
+  void connect_neighbour(asio::ip::tcp::endpoint);
 
   struct log_entry {};
 
@@ -44,12 +49,16 @@ private:
     std::vector<log_entry> log;
   };
 
-  raft_options::parameters_type parameters;
   execution_context &exec_ctx;
   asio::ip::tcp::acceptor acceptor;
 
-  // struct connection;
-  // std::unordered_map<asio::ip::tcp::endpoint, std::weak_ptr<connection>>;
+  raft_options::parameters_type parameters;
+  utils::synchronized_value<std::unordered_map<
+      asio::ip::tcp::endpoint, std::weak_ptr<connection_interface<outgoing>>>>
+      connection_map;
+  utils::synchronized_value<
+      std::unordered_map<asio::ip::tcp::endpoint, asio::steady_timer>>
+      timer_map;
 };
 
 #include "detail/raft.hxx"

@@ -1,25 +1,84 @@
 #include "raft_options.hxx"
+#include <boost/lexical_cast.hpp>
 #include <boost/program_options.hpp>
 #include <iostream>
 #include <thread>
+#include <type_traits>
+#include <utility>
 #include <yaml-cpp/yaml.h>
 
+namespace boost {
+template <> spdlog::level::level_enum lexical_cast(const std::string &s) {
+  return static_cast<spdlog::level::level_enum>(
+      boost::lexical_cast<
+          typename std::underlying_type<spdlog::level::level_enum>::type>(s));
+}
+} // namespace boost
+
+namespace YAML {
+template <> struct convert<asio::ip::tcp::endpoint> {
+  static bool decode(const Node &node, asio::ip::tcp::endpoint &out) {
+    std::string s;
+    if (!convert<decltype(s)>::decode(node, s)) {
+      return false;
+    }
+
+    const auto delimiter = s.find_last_of(':');
+    if (delimiter == std::string::npos) {
+      return false;
+    }
+    const std::string ip{s.cbegin(), s.cbegin() + delimiter};
+    const std::string port{s.cbegin() + delimiter + 1, s.cend()};
+
+    out = asio::ip::tcp::endpoint{asio::ip::address::from_string(ip),
+                                  boost::lexical_cast<uint16_t>(port)};
+    return true;
+  }
+};
+template <> struct convert<std::unordered_set<asio::ip::tcp::endpoint>> {
+  static bool decode(const Node &node,
+                     std::unordered_set<asio::ip::tcp::endpoint> &out) {
+    std::vector<asio::ip::tcp::endpoint> v;
+    if (!convert<decltype(v)>::decode(node, v)) {
+      return false;
+    }
+
+    std::copy(v.cbegin(), v.cend(), std::inserter(out, out.end()));
+    return true;
+  }
+};
+template <> struct convert<spdlog::level::level_enum> {
+  static bool decode(const Node &node, spdlog::level::level_enum &out) {
+    std::underlying_type<spdlog::level::level_enum>::type proxy;
+    if (!convert<decltype(proxy)>::decode(node, proxy))
+      return false;
+
+    out = static_cast<spdlog::level::level_enum>(proxy);
+    return true;
+  }
+};
+} // namespace YAML
+
 namespace {
+template <typename T> struct is_chrono_duration : std::false_type {};
+
+template <typename Rep, typename Period>
+struct is_chrono_duration<std::chrono::duration<Rep, Period>> : std::true_type {
+};
+
 template <typename Key, typename T>
 [[nodiscard]] inline
-    typename std::enable_if<!std::is_same_v<T, std::chrono::milliseconds>,
-                            T>::type
+    typename std::enable_if<!is_chrono_duration<T>::value, T>::type
     get(const auto &node, const Key &key) {
   return node[key].template as<T>();
 }
 
 template <typename Key, typename T>
 [[nodiscard]] inline
-    typename std::enable_if<std::is_same_v<T, std::chrono::milliseconds>,
-                            T>::type
+    typename std::enable_if<is_chrono_duration<T>::value, T>::type
     get(const auto &node, const Key &key) {
-  uint32_t ms = get<Key, uint32_t>(node, key);
-  return std::chrono::milliseconds(ms);
+  typename T::rep duration = get<Key, typename T::rep>(node, key);
+  return T{duration};
 }
 
 template <bool Optional, typename Key, typename T>
@@ -94,9 +153,10 @@ std::optional<raft_options> raft_options::create(int argc, const char *argv[]) {
   get_yaml<true>(file_config, opt.logging.level, "logging", "level");
   get_yaml<true>(file_config, opt.logging.pattern, "logging", "pattern");
   get_yaml<false>(file_config, opt.parameters.timeout, "parameters", "timeout");
-  get_yaml<false>(file_config, opt.parameters.address, "parameters", "address");
-  get_yaml<false>(file_config, opt.parameters.port, "parameters", "port");
+  get_yaml<false>(file_config, opt.parameters.bind, "parameters", "bind");
   get_yaml<false>(file_config, opt.parameters.neighbours, "parameters",
                   "neighbours");
+  get_yaml<false>(file_config, opt.parameters.connection.retry, "parameters",
+                  "connection", "retry");
   return opt;
 }
