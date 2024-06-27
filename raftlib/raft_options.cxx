@@ -25,13 +25,19 @@ template <> struct convert<asio::ip::tcp::endpoint> {
 
     const auto delimiter = s.find_last_of(':');
     if (delimiter == std::string::npos) {
+      throw std::runtime_error(fmt::format("missing port in address: {}", s));
       return false;
     }
     const std::string ip{s.cbegin(), s.cbegin() + delimiter};
     const std::string port{s.cbegin() + delimiter + 1, s.cend()};
 
-    out = asio::ip::tcp::endpoint{asio::ip::address::from_string(ip),
-                                  boost::lexical_cast<uint16_t>(port)};
+    try {
+      out = asio::ip::tcp::endpoint{asio::ip::address::from_string(ip),
+                                    boost::lexical_cast<uint16_t>(port)};
+    } catch (const std::exception &e) {
+      throw std::runtime_error(
+          fmt::format("error parsing {} error: {}", s, e.what()));
+    }
     return true;
   }
 };
