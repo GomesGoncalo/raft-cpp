@@ -3,12 +3,15 @@
 #include <asio/streambuf.hpp>
 #include <boost/lexical_cast.hpp>
 #include <future>
+#include <optional>
 #include <spdlog/spdlog.h>
+#include <variant>
 
 template <typename execution_context>
 raft<execution_context>::raft(secret_code, execution_context &exec_ctx,
                               const raft_options::parameters_type &parameters)
-    : exec_ctx{exec_ctx}, parameters{parameters}, acceptor{exec_ctx} {
+    : exec_ctx{exec_ctx}, parameters{parameters}, acceptor{exec_ctx},
+      state{follower{exec_ctx, parameters.state}} {
   acceptor.open(parameters.bind.protocol());
   acceptor.set_option(asio::ip::tcp::acceptor::reuse_address(true));
   acceptor.bind(parameters.bind);
@@ -58,7 +61,7 @@ void raft<execution_context>::on_disconnected(
           timer.async_wait([this, th, endpt = std::move(endptv)](
                                const asio::error_code &ec) {
             if (!!ec) {
-              SPDLOG_DEBUG("{} timer error: {}", endpt, ec.message);
+              SPDLOG_DEBUG("{} timer error: {}", endpt, ec.message());
               return;
             }
             connect_neighbour(std::move(endpt));
@@ -104,7 +107,7 @@ private:
 template <typename execution_context>
 void raft<execution_context>::connect_neighbour(asio::ip::tcp::endpoint endpt) {
   if (utils::apply(
-          [&endpt](auto &map, auto &timer_map) {
+          [&endpt](const auto &map, auto &timer_map) {
             timer_map.erase(endpt);
             return map.find(endpt) != map.cend();
           },
@@ -137,7 +140,67 @@ raft<execution_context>::create(Args &&...args) {
       secret_code{}, std::forward<Args>(args)...);
   service->start_accept();
   service->connect_neighbours();
+  service->process();
   return service;
+}
+
+template <class... Ts> struct overloaded : Ts... {
+  using Ts::operator()...;
+};
+template <class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
+
+template <typename execution_context> void raft<execution_context>::process() {
+  utils::apply(
+      [this](auto &state) {
+        state = std::move(std::visit(overloaded{[this](auto &&arg) {
+                                       return process_state(std::move(arg));
+                                     }},
+                                     state));
+      },
+      state);
+}
+
+template <typename execution_context>
+template <typename Fn>
+void raft<execution_context>::change_state(Fn &&fn) {
+  utils::apply(std::forward<Fn>(fn), state);
+  process();
+}
+
+template <typename execution_context>
+std::variant<follower, candidate, leader>
+raft<execution_context>::process_state(follower state) {
+  SPDLOG_INFO("processing follower");
+  state.election_timer.expires_after(state.parameters.election_timeout);
+  state.election_timer.async_wait([this](const asio::error_code &ec) {
+    if (!!ec) {
+      return;
+    }
+    change_state(
+        [](auto &state) { state = candidate{std::get<follower>(state)}; });
+  });
+  return state;
+}
+
+template <typename execution_context>
+std::variant<follower, candidate, leader>
+raft<execution_context>::process_state(candidate state) {
+  SPDLOG_INFO("processing candidate");
+  state.election_timer.expires_after(state.parameters.election_timeout);
+  state.election_timer.async_wait([this](const asio::error_code &ec) {
+    if (!!ec) {
+      return;
+    }
+    change_state(
+        [](auto &state) { state = candidate{std::get<candidate>(state)}; });
+  });
+  return state;
+}
+template <typename execution_context>
+std::variant<follower, candidate, leader>
+raft<execution_context>::process_state(leader state) {
+  SPDLOG_INFO("processing leader");
+  return state;
 }
 
 #include "connection.hxx"

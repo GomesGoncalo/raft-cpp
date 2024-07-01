@@ -1,6 +1,7 @@
 #include "raft_options.hxx"
 #include <boost/lexical_cast.hpp>
 #include <boost/program_options.hpp>
+#include <boost/uuid/uuid_generators.hpp>
 #include <iostream>
 #include <thread>
 #include <type_traits>
@@ -16,6 +17,18 @@ template <> spdlog::level::level_enum lexical_cast(const std::string &s) {
 } // namespace boost
 
 namespace YAML {
+template <> struct convert<boost::uuids::uuid> {
+  static bool decode(const Node &node, boost::uuids::uuid &out) {
+    std::string s;
+    if (!convert<decltype(s)>::decode(node, s)) {
+      return false;
+    }
+
+    boost::uuids::string_generator gen;
+    out = gen(s);
+    return true;
+  }
+};
 template <> struct convert<asio::ip::tcp::endpoint> {
   static bool decode(const Node &node, asio::ip::tcp::endpoint &out) {
     std::string s;
@@ -158,11 +171,14 @@ std::optional<raft_options> raft_options::create(int argc, const char *argv[]) {
                  "quit-when-done");
   get_yaml<true>(file_config, opt.logging.level, "logging", "level");
   get_yaml<true>(file_config, opt.logging.pattern, "logging", "pattern");
-  get_yaml<false>(file_config, opt.parameters.timeout, "parameters", "timeout");
+  get_yaml<false>(file_config, opt.parameters.state.election_timeout,
+                  "parameters", "state", "election-timeout");
   get_yaml<false>(file_config, opt.parameters.bind, "parameters", "bind");
   get_yaml<false>(file_config, opt.parameters.neighbours, "parameters",
                   "neighbours");
   get_yaml<false>(file_config, opt.parameters.connection.retry, "parameters",
                   "connection", "retry");
+  get_yaml<false>(file_config, opt.parameters.state.uuid, "parameters", "state",
+                  "uuid");
   return opt;
 }

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <asio/ip/tcp.hpp>
+#include <boost/uuid/uuid.hpp>
 #include <chrono>
 #include <filesystem>
 #include <optional>
@@ -9,7 +10,6 @@
 #include <vector>
 
 using namespace std::chrono_literals;
-
 struct raft_options final {
   /**
    * The path to the config file.
@@ -74,16 +74,6 @@ struct raft_options final {
 
   struct parameters_type {
     /**
-     * The time (in milliseconds) after last hearing a Leader node when a new
-     * election should start
-     *
-     * This value is not optional and must be added in the YAML config file
-     *
-     * key: timeout
-     */
-    std::chrono::milliseconds timeout{0ms};
-
-    /**
      * The address for this node to bind to.
      *
      * This value is not optional and must be added in the YAML config file
@@ -112,6 +102,22 @@ struct raft_options final {
        */
       std::chrono::milliseconds retry{0ms};
     } connection{};
+
+    struct state_type {
+      struct persistent_storage_type {
+      } persistent_storage{};
+
+      /**
+       * The time (in milliseconds) after last hearing a Leader node when a new
+       * election should start
+       *
+       * This value is not optional and must be added in the YAML config file
+       *
+       * key: election-timeout
+       */
+      std::chrono::milliseconds election_timeout{0ms};
+      boost::uuids::uuid uuid{};
+    } state{};
   } parameters{};
 
   /**

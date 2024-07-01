@@ -1,9 +1,8 @@
 #pragma once
 
 #include "detail/connection_interface.hxx"
-#include "raft_options.hxx"
+#include "node_state.hxx"
 #include "synchronized_value.hxx"
-#include <boost/uuid/uuid.hpp>
 #include <unordered_map>
 
 template <typename execution_context>
@@ -35,20 +34,6 @@ private:
   void connect_neighbours();
   void connect_neighbour(asio::ip::tcp::endpoint);
 
-  struct log_entry {};
-
-  struct volatile_state {
-    uint64_t commitIndex{0};
-    uint64_t lastApplied{0};
-  };
-
-  struct persistent_state {
-  private:
-    uint32_t currentTerm{0};
-    std::optional<boost::uuids::uuid> votedFor{std::nullopt};
-    std::vector<log_entry> log;
-  };
-
   execution_context &exec_ctx;
   asio::ip::tcp::acceptor acceptor;
 
@@ -59,6 +44,14 @@ private:
   utils::synchronized_value<
       std::unordered_map<asio::ip::tcp::endpoint, asio::steady_timer>>
       timer_map;
+
+  utils::synchronized_value<std::variant<follower, candidate, leader>> state;
+
+  void process();
+  template <typename Fn> void change_state(Fn &&);
+  std::variant<follower, candidate, leader> process_state(follower);
+  std::variant<follower, candidate, leader> process_state(candidate);
+  std::variant<follower, candidate, leader> process_state(leader);
 };
 
 #include "detail/raft.hxx"
