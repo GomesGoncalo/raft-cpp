@@ -1,13 +1,12 @@
 #pragma once
 
-#include <raftlib/raft_options.hxx>
-
-#include <asio/io_service.hpp>
+#include <asio/io_context.hpp>
 #include <thread>
 #include <vector>
 
-struct jthread_pool : public asio::io_service {
-  void setup_threads(const raft_options::concurrency_type &concurrency);
+struct concurrency_type;
+struct jthread_pool : public asio::io_context {
+  void setup_threads(const concurrency_type &concurrency);
   ~jthread_pool();
 
 private:

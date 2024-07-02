@@ -1,6 +1,6 @@
 #pragma once
 
-#include "detail/synchronized_value_impl.hxx"
+#include "detail/synchronized_value.hxx"
 
 namespace utils {
 template <typename T> class synchronized_value;

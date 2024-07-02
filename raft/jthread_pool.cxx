@@ -1,9 +1,9 @@
 #include "jthread_pool.hxx"
+#include <raftlib/raft_options.hxx>
 #include <ranges>
 #include <spdlog/spdlog.h>
 
-void jthread_pool::setup_threads(
-    const raft_options::concurrency_type &concurrency) {
+void jthread_pool::setup_threads(const concurrency_type &concurrency) {
   threads.resize(concurrency.threads);
   for (const int i : std::views::iota(1u, concurrency.threads)) {
     SPDLOG_TRACE("Starting executor {}", i);

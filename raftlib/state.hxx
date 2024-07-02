@@ -2,9 +2,8 @@
 
 #include "raft_options.hxx"
 #include <boost/uuid/uuid_io.hpp>
-#include <fmt/format.h>
-#include <fmt/ranges.h>
 #include <optional>
+#include <vector>
 
 namespace state {
 struct log_entry {};
@@ -25,13 +24,23 @@ struct persistent_guard {
 
   persistent &p;
 };
+struct const_persistent_guard {
+  const_persistent_guard(const persistent &p) : p(p) {}
+
+  const uint32_t &currentTerm() const;
+  const std::optional<boost::uuids::uuid> &votedFor() const;
+  const std::vector<log_entry> &log() const;
+
+  const persistent &p;
+};
 
 struct persistent {
-  persistent(
-      const raft_options::parameters_type::state_type::persistent_storage_type
-          &) {}
+  persistent(const persistent_storage_type &);
 
-  persistent_guard acquire() { return persistent_guard{*this}; }
+  persistent_guard acquire_mut() { return persistent_guard{*this}; }
+  const_persistent_guard acquire() const {
+    return const_persistent_guard{*this};
+  }
 
   uint32_t get_term() const { return currentTerm; }
   std::optional<boost::uuids::uuid> get_vote() const { return votedFor; }
@@ -39,65 +48,22 @@ struct persistent {
 
 private:
   friend class persistent_guard;
+  friend class const_persistent_guard;
   uint32_t currentTerm{0};
   std::optional<boost::uuids::uuid> votedFor{std::nullopt};
   std::vector<log_entry> log;
+  persistent_storage_type parameters;
 };
 
-uint32_t &persistent_guard::currentTerm() { return p.currentTerm; }
-std::optional<boost::uuids::uuid> &persistent_guard::votedFor() {
-  return p.votedFor;
-}
-std::vector<log_entry> &persistent_guard::log() { return p.log; }
-
 struct node {
-  node(const raft_options::parameters_type::state_type &config)
-      : p{config.persistent_storage}, parameters{config} {}
+  node(const state_type &);
 
   persistent p;
   volatiles v{};
 
-  raft_options::parameters_type::state_type parameters;
+  state_type parameters;
 
 protected:
   ~node() = default;
 };
 } // namespace state
-template <>
-struct fmt::formatter<state::log_entry> : fmt::formatter<string_view> {
-  auto format(const state::log_entry &v, format_context &ctx) const {
-    std::string temp;
-    fmt::format_to(std::back_inserter(temp), "");
-    return fmt::formatter<string_view>::format(temp, ctx);
-  }
-};
-template <>
-struct fmt::formatter<std::optional<boost::uuids::uuid>>
-    : fmt::formatter<string_view> {
-  auto format(const std::optional<boost::uuids::uuid> &v,
-              format_context &ctx) const {
-    std::string temp;
-    if (v) {
-      fmt::format_to(std::back_inserter(temp), "{}",
-                     boost::uuids::to_string(*v));
-    } else {
-      fmt::format_to(std::back_inserter(temp), "none");
-    }
-    return fmt::formatter<string_view>::format(temp, ctx);
-  }
-};
-template <>
-struct fmt::formatter<state::persistent> : fmt::formatter<string_view> {
-  auto format(const state::persistent &p, format_context &ctx) const {
-    std::string temp;
-    fmt::format_to(std::back_inserter(temp),
-                   "{{ term: {}, vote: {}, log: {} }}", p.get_term(),
-                   p.get_vote(), p.get_log());
-    return fmt::formatter<string_view>::format(temp, ctx);
-  }
-};
-
-state::persistent_guard::~persistent_guard() {
-  // TODO:write to disk
-  SPDLOG_INFO("persistent: {}", p);
-}

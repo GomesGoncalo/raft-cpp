@@ -6,7 +6,8 @@ import libs += yaml-cpp%lib{yaml-cpp}
 import libs += libboost-uuid%lib{boost_uuid}
 import libs += libboost-serialization%lib{boost_serialization}
 
-lib{raft}: {hxx ixx txx cxx}{**} $libs
+include ../utils/
+lib{raft}: {hxx ixx txx cxx}{**} $libs ../utils/lib{utils}
 
 cxx.poptions =+ "-I$out_root" "-I$src_root"
 cxx.coptions=-O3

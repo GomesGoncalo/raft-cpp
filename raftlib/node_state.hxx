@@ -3,9 +3,7 @@
 #include "state.hxx"
 
 struct follower : public state::node {
-  template <typename execution_context>
-  follower(execution_context &ctx,
-           const raft_options::parameters_type::state_type &state)
+  follower(asio::io_context &ctx, const state_type &state)
       : election_timer{ctx}, state::node{state} {}
 
   asio::steady_timer election_timer;
@@ -28,7 +26,7 @@ struct candidate : public state::node {
 
 private:
   void start_election() {
-    auto guard = p.acquire();
+    auto guard = p.acquire_mut();
     guard.currentTerm()++;
     guard.votedFor() = parameters.uuid;
   }
