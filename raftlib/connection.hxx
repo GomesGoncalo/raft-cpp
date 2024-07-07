@@ -1,6 +1,6 @@
 #pragma once
 
-#include "detail/connection_interface.hxx"
+#include "connection_interface.hxx"
 
 template <typename direction>
 struct connection : public std::enable_shared_from_this<connection<direction>>,

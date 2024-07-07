@@ -5,7 +5,7 @@
 #include <boost/lexical_cast.hpp>
 #include <future>
 #include <optional>
-#include <variant>
+#include <utils/variant.hxx>
 
 raft::raft(secret_code, asio::io_context &exec_ctx,
            const parameters_type &parameters)
@@ -81,11 +81,6 @@ void raft::start_accept() {
 }
 
 void raft::stop() { acceptor.close(); }
-
-template <class... Ts> struct overloaded : Ts... {
-  using Ts::operator()...;
-};
-template <class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
 
 void raft::process() {
   utils::apply(

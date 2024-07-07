@@ -1,13 +1,12 @@
 #pragma once
 
+#include "log_entry.hxx"
 #include "raft_options.hxx"
 #include <boost/uuid/uuid_io.hpp>
 #include <optional>
 #include <vector>
 
 namespace state {
-struct log_entry {};
-
 struct volatiles {
   uint64_t commitIndex{0};
   uint64_t lastApplied{0};

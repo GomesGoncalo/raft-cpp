@@ -6,14 +6,6 @@
 #include <spdlog/spdlog.h>
 
 template <>
-struct fmt::formatter<state::log_entry> : fmt::formatter<string_view> {
-  auto format(const state::log_entry &v, format_context &ctx) const {
-    std::string temp;
-    fmt::format_to(std::back_inserter(temp), "");
-    return fmt::formatter<string_view>::format(temp, ctx);
-  }
-};
-template <>
 struct fmt::formatter<std::optional<boost::uuids::uuid>>
     : fmt::formatter<string_view> {
   auto format(const std::optional<boost::uuids::uuid> &v,
@@ -56,7 +48,7 @@ std::optional<boost::uuids::uuid> &state::persistent_guard::votedFor() {
   return p.votedFor;
 }
 
-std::vector<state::log_entry> &state::persistent_guard::log() { return p.log; }
+std::vector<log_entry> &state::persistent_guard::log() { return p.log; }
 
 const uint32_t &state::const_persistent_guard::currentTerm() const {
   return p.currentTerm;
@@ -67,7 +59,6 @@ state::const_persistent_guard::votedFor() const {
   return p.votedFor;
 }
 
-const std::vector<state::log_entry> &
-state::const_persistent_guard::log() const {
+const std::vector<log_entry> &state::const_persistent_guard::log() const {
   return p.log;
 }
