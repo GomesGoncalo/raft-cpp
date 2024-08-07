@@ -38,7 +38,7 @@ state::node::node(const state_type &config)
     : p{config.persistent_storage}, parameters{config} {}
 
 state::persistent_guard::~persistent_guard() {
-  // TODO:write to disk
+  // FIXME: write to disk
   SPDLOG_INFO("persistent: {}", p);
 }
 

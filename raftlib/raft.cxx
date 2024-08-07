@@ -5,17 +5,13 @@
 #include <boost/lexical_cast.hpp>
 #include <future>
 #include <optional>
+#include <utility>
 #include <utils/variant.hxx>
 
 raft::raft(secret_code, asio::io_context &exec_ctx,
            const parameters_type &parameters)
-    : exec_ctx{exec_ctx}, parameters{parameters}, acceptor{exec_ctx},
-      state{follower{exec_ctx, parameters.state}} {
-  acceptor.open(parameters.bind.protocol());
-  acceptor.set_option(asio::ip::tcp::acceptor::reuse_address(true));
-  acceptor.bind(parameters.bind);
-  acceptor.listen();
-}
+    : exec_ctx{exec_ctx}, parameters{parameters}, accept{exec_ctx, parameters},
+      state{std::in_place, follower{exec_ctx, parameters.state}} {}
 
 void raft::connect_neighbours() {
   for (const auto &neighbour : parameters.neighbours) {
@@ -74,19 +70,17 @@ void raft::connect_neighbour(asio::ip::tcp::endpoint endpt) {
 
 void raft::start_accept() {
   auto th = shared_from_this();
-  connection<incoming>::create(incoming{acceptor}, shared_from_this(),
+  connection<incoming>::create(incoming{accept}, shared_from_this(),
                                parameters.connection);
 }
 
-void raft::stop() { acceptor.close(); }
+void raft::stop() { accept.close(); }
 
 void raft::process() {
   utils::apply(
       [this](auto &state) {
-        state = std::move(std::visit(overloaded{[this](auto &&arg) {
-                                       return process_state(std::move(arg));
-                                     }},
-                                     state));
+        std::visit(overloaded{[this](auto &arg) { process_state(arg); }},
+                   state);
       },
       state);
 }
@@ -96,30 +90,28 @@ template <typename Fn> void raft::change_state(Fn &&fn) {
   process();
 }
 
-std::variant<follower, candidate, leader> raft::process_state(follower state) {
+void raft::process_state(follower &state) {
   state.election_timer.expires_after(state.parameters.election_timeout);
   state.election_timer.async_wait([this](const asio::error_code &ec) {
-    if (!!ec) {
+    if (ec) {
       return;
     }
-    change_state(
-        [](auto &state) { state = candidate{std::get<follower>(state)}; });
+    change_state([](auto &state) {
+      state = std::move(candidate(std::get<follower>(state)));
+    });
   });
-  return state;
 }
 
-std::variant<follower, candidate, leader> raft::process_state(candidate state) {
+void raft::process_state(candidate &state) {
   state.election_timer.expires_after(state.parameters.election_timeout);
   state.election_timer.async_wait([this](const asio::error_code &ec) {
-    if (!!ec) {
+    if (ec) {
       return;
     }
-    change_state(
-        [](auto &state) { state = candidate{std::get<candidate>(state)}; });
+    change_state([](auto &state) {
+      state = std::move(leader(std::get<candidate>(state)));
+    });
   });
-  return state;
 }
 
-std::variant<follower, candidate, leader> raft::process_state(leader state) {
-  return state;
-}
+void raft::process_state(leader &state) {}

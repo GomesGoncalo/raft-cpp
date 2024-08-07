@@ -1,9 +1,10 @@
 #pragma once
 
+#include "acceptor.hxx"
 #include <asio/ip/tcp.hpp>
 
 struct incoming {
-  asio::ip::tcp::acceptor &acceptor;
+  acceptor &accept;
 };
 struct outgoing {
   asio::ip::tcp::endpoint endpt;

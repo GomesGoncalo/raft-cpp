@@ -1,5 +1,6 @@
 #pragma once
 
+#include "acceptor.hxx"
 #include "node_state.hxx"
 #include <unordered_map>
 #include <utils/synchronized_value.hxx>
@@ -34,7 +35,7 @@ private:
   void connect_neighbour(asio::ip::tcp::endpoint);
 
   asio::io_context &exec_ctx;
-  asio::ip::tcp::acceptor acceptor;
+  acceptor accept;
 
   parameters_type parameters;
   utils::synchronized_value<std::unordered_map<
@@ -48,9 +49,9 @@ private:
 
   void process();
   template <typename Fn> void change_state(Fn &&);
-  std::variant<follower, candidate, leader> process_state(follower);
-  std::variant<follower, candidate, leader> process_state(candidate);
-  std::variant<follower, candidate, leader> process_state(leader);
+  void process_state(follower &);
+  void process_state(candidate &);
+  void process_state(leader &);
 };
 
 #include "detail/raft.hxx"

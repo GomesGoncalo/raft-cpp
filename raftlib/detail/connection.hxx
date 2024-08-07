@@ -22,12 +22,12 @@ void connection<direction>::start(const outgoing &) {
 template <typename direction>
 void connection<direction>::start(const incoming &) {
   auto th = shared_from_this();
-  dir.acceptor.async_accept(socket, [this, th](const asio::error_code &ec) {
+  dir.accept.get().async_accept(socket, [this, th](const asio::error_code &ec) {
     if (!!ec) {
       return;
     }
 
-    connection<incoming>::create(incoming{dir.acceptor}, node, parameters);
+    connection<incoming>::create(incoming{dir.accept}, node, parameters);
   });
 }
 
