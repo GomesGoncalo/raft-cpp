@@ -1,7 +1,9 @@
 libs =
 import libs += libasio%lib{asio}
-import libs += libboost-program-options%lib{boost_program_options}
+import libs += yaml-cpp%lib{yaml-cpp}
 import libs += spdlog%lib{spdlog}
+import libs += libboost-uuid%lib{boost_uuid}
+import libs += libboost-lexical-cast%lib{boost_lexical_cast}
 
 include ../raftlib/
 exe{raft}: {hxx ixx txx cxx}{**} $libs ../raftlib/lib{raft}

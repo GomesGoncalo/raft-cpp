@@ -1,7 +1,8 @@
 libs =
 import libs += doctest%lib{doctest}
-import libs += spdlog%lib{spdlog}
 import libs += libasio%lib{asio}
+import libs += spdlog%lib{spdlog}
+import libs += libboost-uuid%lib{boost_uuid}
 
 include ../raftlib/
 exe{tests}: {hxx ixx txx cxx}{**} $libs ../raftlib/lib{raft}

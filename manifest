@@ -16,4 +16,5 @@ depends: libboost-program-options == 1.83.0
 depends: doctest == 2.4.11
 depends: yaml-cpp == 0.7.0
 depends: libboost-uuid == 1.83.0
+depends: libboost-lexical-cast == 1.83.0
 depends: libboost-serialization == 1.83.0

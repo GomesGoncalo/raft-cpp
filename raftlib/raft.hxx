@@ -9,11 +9,12 @@ template <typename Dir> struct connection_interface;
 
 struct raft final : public std::enable_shared_from_this<raft> {
 private:
-  struct secret_code {};
+  struct secret_code {
+    explicit secret_code() = default;
+  };
 
 public:
   template <typename... Args> static std::weak_ptr<raft> create(Args &&...);
-  ~raft();
   void stop();
 
   raft(secret_code, asio::io_context &, const parameters_type &);

@@ -9,8 +9,6 @@
 #include <unordered_set>
 #include <vector>
 
-using namespace std::chrono_literals;
-
 struct concurrency_type {
   /**
    * The number of threads to be used by the executor.
@@ -21,7 +19,7 @@ struct concurrency_type {
    * This value can be provided in the YAML config file (preferred) or in the
    * command line. But it is optional.
    *
-   * key: threads
+   * key: concurrency.threads
    *
    * [1]: https://en.cppreference.com/w/cpp/thread/thread/hardware_concurrency
    */
@@ -31,6 +29,8 @@ struct concurrency_type {
    * If true the program will terminate when there is no more work to do; this
    * behaviour should be the default. If you want the program to keep running
    * set this to false.
+   *
+   * key: concurrency.quit-when-done
    */
   bool quit_when_done{true};
 };
@@ -71,9 +71,9 @@ struct connection_type {
    *
    * This value is not optional and must be added in the YAML config file
    *
-   * key: retry
+   * key: parameters.connection.retry
    */
-  std::chrono::milliseconds retry{0ms};
+  std::chrono::milliseconds retry;
 };
 
 struct persistent_storage_type {};
@@ -87,9 +87,17 @@ struct state_type {
    *
    * This value is not optional and must be added in the YAML config file
    *
-   * key: election-timeout
+   * key: parameters.state.election-timeout
    */
-  std::chrono::milliseconds election_timeout{0ms};
+  std::chrono::milliseconds election_timeout;
+
+  /**
+   * The UUID of the node
+   *
+   * This value is not optional and must be added in the YAML config file
+   *
+   * key: parameters.state.uuid
+   */
   boost::uuids::uuid uuid{};
 };
 
@@ -99,7 +107,7 @@ struct parameters_type {
    *
    * This value is not optional and must be added in the YAML config file
    *
-   * key: address
+   * key: parameters.bind
    */
   asio::ip::tcp::endpoint bind{};
 
@@ -109,7 +117,7 @@ struct parameters_type {
    *
    * This value is not optional and must be added in the YAML config file
    *
-   * key: neighbours
+   * key: parameters.neighbours
    */
   std::unordered_set<asio::ip::tcp::endpoint> neighbours{};
 
@@ -140,6 +148,13 @@ struct raft_options final {
    * Will throw for any unknown or malformated parameters (both in the command
    * line or in the YAML config file)
    */
-  [[nodiscard]] static std::optional<raft_options> create(int argc,
-                                                          const char *argv[]);
+  template <typename Reader>
+    requires std::invocable<const Reader &, const std::string &>
+  [[nodiscard]] static std::optional<raft_options>
+  create(int argc, const char *argv[], Reader && = Reader{});
+
+private:
+  bool parse_command_line(int argc, const char *argv[]);
 };
+
+#include "detail/raft_options.hxx"

@@ -17,8 +17,6 @@ raft::raft(secret_code, asio::io_context &exec_ctx,
   acceptor.listen();
 }
 
-raft::~raft() {}
-
 void raft::connect_neighbours() {
   for (const auto &neighbour : parameters.neighbours) {
     connect_neighbour(neighbour);
