@@ -46,8 +46,8 @@ struct persistent {
   std::vector<log_entry> get_log() const { return log; }
 
 private:
-  friend class persistent_guard;
-  friend class const_persistent_guard;
+  friend struct persistent_guard;
+  friend struct const_persistent_guard;
   uint32_t currentTerm{0};
   std::optional<boost::uuids::uuid> votedFor{std::nullopt};
   std::vector<log_entry> log;

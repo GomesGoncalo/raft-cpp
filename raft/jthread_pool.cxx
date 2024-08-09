@@ -5,10 +5,10 @@
 
 void jthread_pool::setup_threads(const concurrency_type &concurrency) {
   threads.resize(concurrency.threads);
-  for (const int i : std::views::iota(1u, concurrency.threads)) {
+  std::ranges::for_each(std::views::iota(1u, concurrency.threads), [&](int) {
     SPDLOG_TRACE("Starting executor {}", i);
     threads.emplace_back([this] { run(); });
-  }
+  });
 }
 
 jthread_pool::~jthread_pool() {

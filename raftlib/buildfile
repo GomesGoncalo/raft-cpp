@@ -9,5 +9,5 @@ include ../utils/
 lib{raft}: {hxx ixx txx cxx}{**} $libs ../utils/lib{utils}
 
 cxx.poptions =+ "-I$out_root" "-I$src_root"
-cxx.coptions=-O3
+cxx.coptions=-O3 -Wall -Wpedantic -Werror
 

@@ -1,5 +1,6 @@
 #include "raft.hxx"
 #include "connection.hxx"
+#include "node_state.hxx"
 #include <asio/read.hpp>
 #include <asio/streambuf.hpp>
 #include <boost/lexical_cast.hpp>
@@ -67,65 +68,76 @@ struct FromStateChangeBehaviour {};
 struct StartElection {};
 struct MoveToNext {};
 
-template <> void raft::process_state<MoveToNext>(follower &state) {
-  change_state([](auto &state) {
-    state = std::move(candidate(std::get<follower>(state)));
-  });
-}
+template <> void raft::process_state<candidate, FromStateChangeBehaviour>();
 
-template <> void raft::process_state<MoveToNext>(candidate &state) {
-  change_state([](auto &state) {
-    state = std::move(leader(std::get<candidate>(state)));
-  });
-}
-
-template <> void raft::process_state<StartElection>(candidate &state) {
-  change_state([&state, this](auto &inner) {
-    candidate new_state(state);
-    // TODO: Send RequestVoteRPC and wait for responses
-    execute_after(new_state.election_timer,
-                  new_state.parameters.election_timeout,
-                  on_success([this, &new_state] {
-                    process_state<FromStateChangeBehaviour>(new_state);
-                  }));
-    inner = std::move(new_state);
-  });
-}
-
-template <>
-void raft::process_state<FromStateChangeBehaviour>(follower &state) {
-  execute_after(
-      state.election_timer, state.parameters.election_timeout,
-      on_success([this, &state] { process_state<MoveToNext>(state); }));
-}
-
-template <>
-void raft::process_state<FromStateChangeBehaviour>(candidate &state) {
-  const auto next_election_in = random_time_in_between(
-      state.parameters.election_start_min, state.parameters.election_start_max);
-  spdlog::info(
-      "Schedule next election in {} ms",
-      std::chrono::duration_cast<std::chrono::milliseconds>(next_election_in)
-          .count());
-  execute_after(
-      state.election_timer, next_election_in,
-      on_success([this, &state] { process_state<StartElection>(state); }));
-}
-
-template <> void raft::process_state<FromStateChangeBehaviour>(leader &state) {}
-
-void raft::process() {
+template <> void raft::process_state<follower, MoveToNext>() {
   utils::apply(
-      [this](auto &state) {
-        std::visit(overloaded{[this](auto &arg) {
-                     process_state<FromStateChangeBehaviour>(arg);
-                   }},
-                   state);
+      [](auto &state) {
+        spdlog::info("follower moving to candidate");
+        state = std::move(candidate(std::get<follower>(state)));
+      },
+      state);
+  process_state<candidate, FromStateChangeBehaviour>();
+}
+
+template <> void raft::process_state<leader, FromStateChangeBehaviour>();
+template <> void raft::process_state<candidate, MoveToNext>() {
+  utils::apply(
+      [](auto &state) {
+        state = std::move(leader(std::get<candidate>(state)));
+      },
+      state);
+  process_state<leader, FromStateChangeBehaviour>();
+}
+
+template <> void raft::process_state<candidate, StartElection>() {
+  utils::apply(
+      [this](auto &inner) {
+        spdlog::info("starting election");
+        candidate new_state(std::get<candidate>(inner));
+        // TODO: Send RequestVoteRPC and wait for responses
+        execute_after(new_state.election_timer,
+                      new_state.parameters.election_timeout, on_success([this] {
+                        process_state<candidate, FromStateChangeBehaviour>();
+                      }));
+        inner = std::move(new_state);
       },
       state);
 }
 
-template <typename Fn> void raft::change_state(Fn &&fn) {
-  utils::apply(std::forward<Fn>(fn), state);
-  process();
+template <> void raft::process_state<follower, FromStateChangeBehaviour>();
+template <> void raft::process_state<follower, EntryPoint>() {
+  spdlog::info("Starting the state machine");
+  process_state<follower, FromStateChangeBehaviour>();
 }
+
+template <> void raft::process_state<follower, FromStateChangeBehaviour>() {
+  utils::apply(
+      [this](auto &inner) {
+        follower &f = std::get<follower>(inner);
+        spdlog::info("scheduling move to candidate");
+        execute_after(
+            f.election_timer, f.parameters.election_timeout,
+            on_success([this] { process_state<follower, MoveToNext>(); }));
+      },
+      state);
+}
+
+template <> void raft::process_state<candidate, FromStateChangeBehaviour>() {
+  utils::apply(
+      [this](auto &inner) {
+        candidate &f = std::get<candidate>(inner);
+        const auto next_election_in = random_time_in_between(
+            f.parameters.election_start_min, f.parameters.election_start_max);
+        spdlog::info("Schedule next election in {} ms",
+                     std::chrono::duration_cast<std::chrono::milliseconds>(
+                         next_election_in)
+                         .count());
+        execute_after(f.election_timer, next_election_in, on_success([this] {
+                        process_state<candidate, StartElection>();
+                      }));
+      },
+      state);
+}
+
+template <> void raft::process_state<leader, FromStateChangeBehaviour>() {}
