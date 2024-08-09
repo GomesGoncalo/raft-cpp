@@ -77,6 +77,10 @@ std::optional<raft_options> raft_options::create(int argc, const char *argv[],
                           "parameters", "connection", "retry");
   detail::get_yaml<false>(file_config, opt.parameters.state.uuid, "parameters",
                           "state", "uuid");
+  detail::get_yaml<false>(file_config, opt.parameters.state.election_start_min,
+                          "parameters", "state", "election-start-min");
+  detail::get_yaml<false>(file_config, opt.parameters.state.election_start_max,
+                          "parameters", "state", "election-start-max");
   detail::get_yaml<false>(file_config, opt.parameters.state.election_timeout,
                           "parameters", "state", "election-timeout");
   return opt;

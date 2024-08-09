@@ -16,42 +16,22 @@ private:
 
 public:
   template <typename... Args> static std::weak_ptr<raft> create(Args &&...);
-  void stop();
-
   raft(secret_code, asio::io_context &, const parameters_type &);
 
-  asio::io_context &get_executor() { return exec_ctx; }
-
-  void on_connected(std::shared_ptr<connection_interface<outgoing>>);
-  void on_disconnected(std::shared_ptr<connection_interface<outgoing>>);
-
 private:
-  auto shared_from_this() {
-    return std::enable_shared_from_this<raft>::shared_from_this();
-  }
-
+  std::shared_ptr<raft> shared_from_this();
   void start_accept();
-  void connect_neighbours();
-  void connect_neighbour(asio::ip::tcp::endpoint);
-
-  asio::io_context &exec_ctx;
-  acceptor accept;
-
-  parameters_type parameters;
-  utils::synchronized_value<std::unordered_map<
-      asio::ip::tcp::endpoint, std::weak_ptr<connection_interface<outgoing>>>>
-      connection_map;
-  utils::synchronized_value<
-      std::unordered_map<asio::ip::tcp::endpoint, asio::steady_timer>>
-      timer_map;
-
-  utils::synchronized_value<std::variant<follower, candidate, leader>> state;
 
   void process();
   template <typename Fn> void change_state(Fn &&);
-  void process_state(follower &);
-  void process_state(candidate &);
-  void process_state(leader &);
+  template <typename Behaviour> void process_state(follower &);
+  template <typename Behaviour> void process_state(candidate &);
+  template <typename Behaviour> void process_state(leader &);
+
+  asio::io_context &exec_ctx;
+  acceptor accept;
+  parameters_type parameters;
+  utils::synchronized_value<std::variant<follower, candidate, leader>> state;
 };
 
 #include "detail/raft.hxx"

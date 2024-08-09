@@ -79,11 +79,30 @@ struct connection_type {
 struct persistent_storage_type {};
 
 struct state_type {
-  persistent_storage_type persistent_storage{};
+  persistent_storage_type persistent_storage;
 
   /**
-   * The time (in milliseconds) after last hearing a Leader node when a new
-   * election should start
+   * The minimum time (in milliseconds) after moving to candidate that our
+   * election should start.
+   *
+   * This value is not optional and must be added in the YAML config file
+   *
+   * key: parameters.state.election-start-min
+   */
+  std::chrono::milliseconds election_start_min;
+
+  /**
+   * The maximum time (in milliseconds) after moving to candidate that our
+   * election should start.
+   *
+   * This value is not optional and must be added in the YAML config file
+   *
+   * key: parameters.state.election-start-max
+   */
+  std::chrono::milliseconds election_start_max;
+
+  /**
+   * The time (in milliseconds) that the election should last
    *
    * This value is not optional and must be added in the YAML config file
    *
@@ -98,7 +117,7 @@ struct state_type {
    *
    * key: parameters.state.uuid
    */
-  boost::uuids::uuid uuid{};
+  boost::uuids::uuid uuid;
 };
 
 struct parameters_type {
@@ -109,7 +128,7 @@ struct parameters_type {
    *
    * key: parameters.bind
    */
-  asio::ip::tcp::endpoint bind{};
+  asio::ip::tcp::endpoint bind;
 
   /**
    * The addresses where other nodes are reacheable.
@@ -119,10 +138,10 @@ struct parameters_type {
    *
    * key: parameters.neighbours
    */
-  std::unordered_set<asio::ip::tcp::endpoint> neighbours{};
+  std::unordered_set<asio::ip::tcp::endpoint> neighbours;
 
-  connection_type connection{};
-  state_type state{};
+  connection_type connection;
+  state_type state;
 };
 
 struct raft_options final {
@@ -132,9 +151,9 @@ struct raft_options final {
    */
   std::filesystem::path config;
 
-  concurrency_type concurrency{};
-  logging_type logging{};
-  parameters_type parameters{};
+  concurrency_type concurrency;
+  logging_type logging;
+  parameters_type parameters;
 
   /**
    * Creates this structure from the command line arguments.

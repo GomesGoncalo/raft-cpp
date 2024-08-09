@@ -2,20 +2,21 @@
 
 template <typename direction>
 connection<direction>::connection(secret_code, direction &&dir,
+                                  asio::io_context &ctx,
                                   std::shared_ptr<raft> node,
                                   connection_type parameters)
-    : socket{node->get_executor()}, node{node},
-      parameters{std::move(parameters)}, dir{std::forward<direction>(dir)} {}
+    : parameters{std::move(parameters)}, node{node}, socket{ctx}, ctx{ctx},
+      dir{std::forward<direction>(dir)} {}
 
 template <typename direction>
 void connection<direction>::start(const outgoing &) {
   auto th = shared_from_this();
   socket.async_connect(dir.endpt, [th, this](const asio::error_code &ec) {
     if (!!ec) {
-      node->on_disconnected(shared_from_this());
+      // node->on_disconnected(shared_from_this());
       return;
     }
-    node->on_connected(shared_from_this());
+    // node->on_connected(shared_from_this());
   });
 }
 
@@ -27,7 +28,7 @@ void connection<direction>::start(const incoming &) {
       return;
     }
 
-    connection<incoming>::create(incoming{dir.accept}, node, parameters);
+    connection<incoming>::create(incoming{dir.accept}, ctx, node, parameters);
   });
 }
 
