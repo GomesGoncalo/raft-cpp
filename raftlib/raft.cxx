@@ -1,53 +1,11 @@
 #include "raft.hxx"
 #include "connection.hxx"
 #include "node_state.hxx"
-#include <asio/read.hpp>
-#include <asio/streambuf.hpp>
-#include <boost/lexical_cast.hpp>
-#include <chrono>
-#include <future>
-#include <optional>
-#include <random>
-#include <spdlog/spdlog.h>
-#include <utility>
+#include <utils/on_success.hxx>
+#include <utils/timer.hxx>
 #include <utils/variant.hxx>
 
-namespace {
-std::invocable<const asio::error_code &> decltype(auto)
-on_success(std::invocable auto &&callback) {
-  return [callback = std::forward<decltype(callback)>(callback)](
-             const asio::error_code &ec) mutable {
-    if (ec) {
-      return;
-    }
-
-    std::invoke(std::forward<decltype(callback)>(callback));
-  };
-}
-void execute_after(asio::steady_timer &timer,
-                   const std::chrono::milliseconds &time,
-                   std::invocable<const asio::error_code &> auto &&callback) {
-  timer.expires_after(time);
-  timer.async_wait(std::forward<decltype(callback)>(callback));
-}
-
-template <typename T, typename S>
-auto random_time_in_between(const T &min, const S &max) {
-  using common_type = std::common_type_t<T, S>;
-  const auto common_min = std::chrono::duration_cast<common_type>(min);
-  const auto common_max = std::chrono::duration_cast<common_type>(max);
-  auto min_count = common_min.count();
-  auto max_count = common_max.count();
-
-  if (max_count < min_count) {
-    std::swap(min_count, max_count);
-  }
-
-  static std::default_random_engine generator;
-  std::uniform_int_distribution<int> distribution(min_count, max_count);
-  return common_type{distribution(generator)};
-}
-} // namespace
+#include <spdlog/spdlog.h>
 
 raft::raft(secret_code, asio::io_context &exec_ctx,
            const parameters_type &parameters)

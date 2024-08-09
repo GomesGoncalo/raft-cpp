@@ -1,19 +1,8 @@
-#include <concepts>
-#include <type_traits>
+#pragma once
+
+#include <utils/chrono.hxx>
 
 namespace detail {
-template <typename T> struct is_chrono_duration : std::false_type {};
-
-template <typename Rep, typename Period>
-struct is_chrono_duration<std::chrono::duration<Rep, Period>> : std::true_type {
-};
-
-template <typename T>
-inline constexpr bool is_chrono_duration_v = is_chrono_duration<T>::value;
-
-template <typename T>
-concept ChronoDuration = is_chrono_duration_v<T>;
-
 template <typename Key, typename T>
   requires(!ChronoDuration<T>)
 [[nodiscard]] inline T get(const auto &node, const Key &key) {
